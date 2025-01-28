@@ -46,7 +46,16 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "@config-plugins/react-native-webrtc"
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
+      "@config-plugins/react-native-webrtc",
+      "expo-pip",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true

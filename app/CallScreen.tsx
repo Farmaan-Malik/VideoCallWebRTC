@@ -2,7 +2,8 @@
 import "../global.css";
 
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Button } from "react-native";
+import { StyleSheet, View, Button, AppState, Platform } from "react-native";
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 import {
     RTCPeerConnection,
@@ -38,6 +39,7 @@ const configuration = {
     iceCandidatePoolSize: 10,
 };
 
+const ExpoPip = Platform.OS === 'android' ? require('expo-pip') : null;
 export default function CallScreen({ roomId, screens, setScreen }) {
     const [localStream, setLocalStream] = useState();
     const [remoteStream, setRemoteStream] = useState();
@@ -45,6 +47,41 @@ export default function CallScreen({ roomId, screens, setScreen }) {
 
     const [isMuted, setIsMuted] = useState(false);
     const [isOffCam, setIsOffCam] = useState(false);
+    const [newPipMode, setNewPipMode] = useState(false);
+    const [automaticEnterEnabled, setAutomaticEnterEnabled] = useState(false);
+    const view = useRef()
+    const [appState, setAppState] = useState(AppState.currentState);
+
+    useEffect(() => {
+      const subscription = AppState.addEventListener('change', handleAppStateChange);
+  
+      return () => {
+        subscription.remove();
+      };
+    }, []);
+  
+    const handleAppStateChange = nextAppState => {
+      if (nextAppState === 'active') {
+        setNewPipMode(false);
+        console.log('App has come to the foreground!');
+      } else if (nextAppState === 'background') {
+        setNewPipMode(true);
+        console.log('App has gone to the background!');
+         if (Platform.OS === 'android') {
+             ExpoPip.enterPipMode({
+                 seamlessResizeEnabled: true,
+                 width: 3,
+                 height:4,
+                 autoEnterEnabled: true,
+             })
+         }else{
+            // startPIP()
+         }
+      }
+      setAppState(nextAppState);
+    };
+  
+
     useEffect(() => {
         startLocalStream();
     }, []);
@@ -182,43 +219,75 @@ export default function CallScreen({ roomId, screens, setScreen }) {
             setIsOffCam(!isOffCam);
         });
     };
+    const startPIP = () => {
+        startIOSPIP(view);
+      };
+      const stopPIP = () => {
+        stopIOSPIP(view);
+      };
+      const stop = () => {
+        console.log('stop');
+        if (stream) {
+          stream.release();
+          setStream(null);
+        }
+      };
+      let pipOptions = {
+        startAutomatically: true,
+        fallbackView: (<View style={{ height: 50, width: 50, backgroundColor: 'red' }} />),
+        preferredSize: {
+          width: 400,
+          height: 800,
+        }
+      }
     return (
-        <View className="flex-1">
-          {!remoteStream && (
-            <RTCView
-              className="flex-1"
-              style={{ height: "100%" }}
-              streamURL={localStream && localStream.toURL()}
-              objectFit={"cover"}
-            />
-          )}
-    
-          {remoteStream && (
-            <>
-              <RTCView
+            <View className="flex-1">
+                {!newPipMode ? (
+                    <>
+            {!remoteStream && (
+                <RTCView
+                className="flex-1"
+                style={{ height: "100%" }}
+                streamURL={localStream && localStream.toURL()}
+                objectFit={"cover"}
+                />
+            )}
+            
+            {remoteStream && (
+                <>
+                <RTCView
                 className="flex-1"
                 style={{ height: "100%" }}
                 streamURL={remoteStream && remoteStream.toURL()}
                 objectFit={"cover"}
-              />
-              {!isOffCam && (
-                <RTCView
-                style={{width:100,height:150,position:'absolute',top:8,right:10}}
-                  streamURL={localStream && localStream.toURL()}
                 />
-              )}
-            </>
-          )}
+                {!isOffCam && (
+                    <RTCView
+                    style={{width:100,height:150,position:'absolute',top:8,right:10}}
+                    streamURL={localStream && localStream.toURL()}
+                    />
+                )}
+                </>
+            )}
             <View style={{position:'absolute', bottom:0, width:'100%',zIndex:3}}>
             <CallActionBox
-              switchCamera={switchCamera}
-              toggleMute={toggleMute}
-              toggleCamera={toggleCamera}
-              endCall={endCall}
+            switchCamera={switchCamera}
+            toggleMute={toggleMute}
+            toggleCamera={toggleCamera}
+            endCall={endCall}
             />
-          </View>
+            </View>
+            </>
+        ) : <View style={{flex:1}}>
+            {Platform.OS === 'android' ? 
+                <RTCView objectFit='cover' streamURL={localStream && localStream.toURL()} style={{flex:1}} />
+             : <RTCPIPView ref={view} iosPIP={pipOptions} objectFit='cover' streamURL={localStream && localStream.toURL()} style={{flex:1}}/> }
         </View>
-      );
+        }
+            </View>
+        )
+        
+      
 }
 
 const styles = StyleSheet.create({

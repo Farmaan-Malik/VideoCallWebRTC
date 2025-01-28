@@ -82,6 +82,14 @@ export default function RoomScreen({ setScreen, screens, setRoomId, roomId }) {
                         Join meeting
                     </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    className="bg-sky-300 p-2 rounded-md"
+                    onPress={() => router.navigate('/piptest')}
+                >
+                    <Text className="color-black text-center text-xl font-bold ">
+                        PipTest
+                    </Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
