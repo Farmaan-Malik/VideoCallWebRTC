@@ -23,6 +23,7 @@ import {
 } from "firebase/firestore";
 import {db} from "@/firebase";
 import CallActionBox from "./CallActionBox";
+import { router, useLocalSearchParams } from "expo-router";
 
 const configuration = {
     iceServers: [
@@ -33,11 +34,11 @@ const configuration = {
     iceCandidatePoolSize: 10,
 };
 
-export default function JoinScreen({ roomId, screens, setScreen }) {
+export default function JoinScreen() {
     const [localStream, setLocalStream] = useState();
     const [remoteStream, setRemoteStream] = useState();
     const [cachedLocalPC, setCachedLocalPC] = useState();
-
+    const {roomId} = useLocalSearchParams()
     const [isMuted, setIsMuted] = useState(false);
     const [isOffCam, setIsOffCam] = useState(false);
 
@@ -74,8 +75,8 @@ export default function JoinScreen({ roomId, screens, setScreen }) {
         setRemoteStream(); // set remoteStream to null or empty when callee leaves the call
         setCachedLocalPC();
         // cleanup
-        setScreen(screens.ROOM); //go back to room screen
-    }
+router.back
+}
 
     //start local webcam on your device
     const startLocalStream = async () => {
@@ -154,7 +155,8 @@ export default function JoinScreen({ roomId, screens, setScreen }) {
         onSnapshot(roomRef, (doc) => {
             const data = doc.data();
             if (!data.answer) {
-                setScreen(screens.ROOM);
+                router.navigate('/RoomScreen')
+                // setScreen(screens.ROOM);
             }
         });
 

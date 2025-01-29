@@ -26,9 +26,10 @@ import {
     updateDoc,
     onSnapshot,
     deleteField,
+    deleteDoc,
 } from "firebase/firestore";
 import CallActionBox from "@/app/CallActionBox";
-
+import { router, useLocalSearchParams } from "expo-router";
 
 const configuration = {
     iceServers: [
@@ -38,9 +39,10 @@ const configuration = {
     ],
     iceCandidatePoolSize: 10,
 };
-
-const ExpoPip = Platform.OS === 'android' ? require('expo-pip') : null;
-export default function CallScreen({ roomId, screens, setScreen }) {
+export default function CallScreen({ screens, setScreen }) {
+    const ExpoPip = Platform.OS === 'android' ? require('expo-pip') : null;
+    const {roomId} = useLocalSearchParams()
+    console.log(roomId)
     const [localStream, setLocalStream] = useState();
     const [remoteStream, setRemoteStream] = useState();
     const [cachedLocalPC, setCachedLocalPC] = useState();
@@ -90,7 +92,7 @@ export default function CallScreen({ roomId, screens, setScreen }) {
         if (localStream && roomId) {
             startCall(roomId);
         }
-    }, [localStream, roomId]);
+    }, [localStream]);
 
     //End call button
     async function endCall() {
@@ -103,17 +105,18 @@ export default function CallScreen({ roomId, screens, setScreen }) {
         }
 
         const roomRef = doc(db, "room", roomId);
-        await updateDoc(roomRef, { answer: deleteField() });
+        // await updateDoc(roomRef, { answer: deleteField() });
+        await deleteDoc(roomRef);
         if (localStream) {
             localStream.getTracks().forEach((track) => {
                 track.stop(); // This stops the track (audio or video)
             });
         }
-        setLocalStream();
-        setRemoteStream(); // set remoteStream to null or empty when callee leaves the call
-        setCachedLocalPC();
+        setLocalStream(null);
+        setRemoteStream(null); // set remoteStream to null or empty when callee leaves the call
+        setCachedLocalPC(null);
         // cleanup
-        setScreen(screens.ROOM); //go back to room screen
+        router.back()//go back to room screen
     }
 
     //start local webcam on your device
@@ -144,6 +147,7 @@ export default function CallScreen({ roomId, screens, setScreen }) {
     };
 
     const startCall = async (id) => {
+        console.log("Starting call with id:", id);
         const localPC = new RTCPeerConnection(configuration);
         localStream.getTracks().forEach((track) => {
             localPC.addTrack(track, localStream);
@@ -172,10 +176,14 @@ export default function CallScreen({ roomId, screens, setScreen }) {
         const offer = await localPC.createOffer();
         await localPC.setLocalDescription(offer);
 
-        await setDoc(roomRef, { offer, connected: false }, { merge: true });
+        await setDoc(roomRef, { offer, connected: false,name:'Farmaan' }, { merge: true });
 
         // Listen for remote answer
         onSnapshot(roomRef, (doc) => {
+            if (!doc.exists()) {  // <- Ensure the document still exists
+                console.log("Room document deleted. Stopping listener.");
+                return;
+            }        
             const data = doc.data();
             if (!localPC.currentRemoteDescription && data.answer) {
                 const rtcSessionDescription = new RTCSessionDescription(data.answer);
