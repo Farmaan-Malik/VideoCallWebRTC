@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import React, {forwardRef} from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import Feather from '@expo/vector-icons/Feather';
 
 interface Props extends TextInputProps {
     placeholder: string,
@@ -18,8 +19,9 @@ interface Props extends TextInputProps {
     containerStyle?:StyleProp<ViewStyle>,
     icon?:boolean,
     iconSize?:number,
-    iconName?:keyof typeof Ionicons.glyphMap,
+    iconName?:keyof typeof Feather.glyphMap,
     onIconClick?:() => void,
+    iconColor?:string
 }
 
 
@@ -62,7 +64,7 @@ const CustomTextInput= forwardRef<TextInput, Props>((props, ref) => {
                 }}
             />
             {props.icon &&
-            <Ionicons size={props.iconSize ? props.iconSize : 15} onPress={props.onIconClick} style={{marginRight:10}} name={props.iconName}/>}
+            <Feather color={props.iconColor ? props.iconColor : 'black'} size={props.iconSize ? props.iconSize : 15} onPress={props.onIconClick} style={{marginRight:10}} name={props.iconName}/>}
         </View>
     );
 });

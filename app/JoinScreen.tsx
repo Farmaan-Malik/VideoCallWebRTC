@@ -30,6 +30,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { KeyboardAvoidingView } from "react-native";
 import CustomTextInput from "@/components/CustomTextInput";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import MessageBubble from "@/components/MessageBubble";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const configuration = {
     iceServers: [
@@ -239,23 +241,21 @@ router.back
         
         <View className="flex-1">
             {isChatVisible ? (
-                <KeyboardAvoidingView behavior='padding' style={{ backgroundColor: 'white', flex: 1 }}>
-                <Ionicons onPress={() => toggleChat()} name='close' size={25} style={{ width: '10%', alignItems: 'center', justifyContent: 'center', padding: 5 }} />
-                <View style={{ flex: 1, backgroundColor: 'white' }}>
-                    <FlatList data={messages} 
-                    renderItem={({ item }) => (<View style={{borderRadius:10,backgroundColor:item.role == 'Host' ? '#9ACBD0' : '#CAE0BC',borderWidth:StyleSheet.hairlineWidth,minWidth:150, maxWidth:200,alignSelf:(item.role == 'Host') ? 'flex-start' : 'flex-end',marginVertical:10,marginHorizontal:5 }}>
-                        <Text style={{ fontSize: 14, color: 'black', fontFamily: 'Nunito-semiBold',padding:10}}>
-                            {item.text}
-                        </Text>
-                        </View>
-                    )} style={{ flex: 1 }} contentContainerStyle={{justifyContent: 'center'}} />
-                </View>
-                <CustomTextInput
-                    containerStyle={{
-                        borderWidth: StyleSheet.hairlineWidth,
-                        // position: 'absolute',
-                        // bottom: '0',
-                        backgroundColor: 'white'
+               <KeyboardAvoidingView behavior='padding' style={{ backgroundColor: 'white', flex: 1 }}>
+                <SafeAreaView edges={['top']} style={{flex:1,backgroundColor:'red'}}>
+               <Ionicons color={'grey'} onPress={() => toggleChat()} name='chevron-back-circle' size={30} style={{ width: '10%', alignItems: 'center', justifyContent: 'center', padding: 5,marginTop:8,marginBottom:8 }} />
+               <View style={{ flex: 1, backgroundColor: 'white' }}>
+                   <FlatList data={messages} 
+                   renderItem={({ item }) => (
+                       <MessageBubble msg={item.text} isSender={item.role != "Host"} name={"Doctor"}/>
+                    )} style={{ flex: 1 }} contentContainerStyle={{justifyContent: 'center' }} />
+               </View>
+               <CustomTextInput
+                   containerStyle={{
+                       borderWidth: StyleSheet.hairlineWidth,
+                       // position: 'absolute',
+                       // bottom: '0',
+                       backgroundColor: 'white'
                     }}
                     style={{
                         width: '90%',
@@ -264,16 +264,18 @@ router.back
                         height: '100%'
                     }}
                     icon={true}
-                    iconName="send-outline"
+                    iconName="send"
                     iconSize={25}
                     onIconClick={() => {
                         handleSendMessage().then(() => setTextMessage(''))
-
+                        
                     }}
+                    iconColor="tomato"
                     value={textMessage}
                     onChangeText={(value) => { setTextMessage(value) }}
                     placeholder="Type a message.." />
-            </KeyboardAvoidingView>
+                    </SafeAreaView>
+           </KeyboardAvoidingView>
             ) : (
                 <>
             <RTCView

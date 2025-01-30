@@ -2,7 +2,7 @@
 import "../global.css";
 
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Button, AppState, Platform, FlatList, Alert, Text, KeyboardAvoidingView } from "react-native";
+import { StyleSheet, View, Button, AppState, Platform, FlatList, Alert, Text, KeyboardAvoidingView, SafeAreaView } from "react-native";
 import { useVideoPlayer, VideoView } from 'expo-video';
 
 import {
@@ -35,6 +35,7 @@ import CallActionBox from "@/app/CallActionBox";
 import { router, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import CustomTextInput from "@/components/CustomTextInput";
+import MessageBubble from "@/components/MessageBubble";
 
 const configuration = {
     iceServers: [
@@ -334,14 +335,13 @@ export default function CallScreen({ screens, setScreen }) {
                             </View>
                         </> : 
                         <KeyboardAvoidingView behavior='padding' style={{ backgroundColor: 'white', flex: 1 }}>
-                            <Ionicons onPress={() => toggleChat()} name='close' size={25} style={{ width: '10%', alignItems: 'center', justifyContent: 'center', padding: 5 }} />
+                            <SafeAreaView style={{flex:1}} >
+
+                            <Ionicons color={'grey'} onPress={() => toggleChat()} name='chevron-back-circle' size={30} style={{ width: '10%', alignItems: 'center', justifyContent: 'center', padding: 5, marginTop:8,marginBottom:8 }} />
                             <View style={{ flex: 1, backgroundColor: 'white' }}>
                                 <FlatList data={messages} 
-                                renderItem={({ item }) => (<View style={{borderRadius:10,backgroundColor:item.role != 'Host' ? '#9ACBD0' : '#CAE0BC',borderWidth:StyleSheet.hairlineWidth,minWidth:150, maxWidth:200,alignSelf:(item.role != 'Host') ? 'flex-start' : 'flex-end',marginVertical:10,marginHorizontal:5 }}>
-                                    <Text style={{ fontSize: 14, color: 'black', fontFamily: 'Nunito-semiBold',padding:10}}>
-                                        {item.text}
-                                    </Text>
-                                    </View>
+                                renderItem={({ item }) => (
+                                    <MessageBubble msg={item.text} isSender={item.role == "Host"} name={"Patient"}/>
                                 )} style={{ flex: 1 }} contentContainerStyle={{justifyContent: 'center' }} />
                             </View>
                             <CustomTextInput
@@ -358,21 +358,23 @@ export default function CallScreen({ screens, setScreen }) {
                                     height: '100%'
                                 }}
                                 icon={true}
-                                iconName="send-outline"
+                                iconName="send"
                                 iconSize={25}
                                 onIconClick={() => {
                                     handleSendMessage().then(() => setTextMessage(''))
-
+                                    
                                 }}
+                                iconColor="tomato"
                                 value={textMessage}
                                 onChangeText={(value) => { setTextMessage(value) }}
                                 placeholder="Type a message.." />
+                                </SafeAreaView>
                         </KeyboardAvoidingView>}
                 </>
             ) : <View style={{ flex: 1 }}>
                 {Platform.OS === 'android' ?
-                    <RTCView objectFit='cover' streamURL={localStream && localStream.toURL()} style={{ flex: 1 }} />
-                    : <RTCPIPView ref={view} iosPIP={pipOptions} objectFit='cover' streamURL={localStream && localStream.toURL()} style={{ flex: 1 }} />}
+                    <RTCView objectFit='cover' streamURL={remoteStream && remoteStream.toURL()} style={{ flex: 1 }} />
+                    : <RTCPIPView ref={view} iosPIP={pipOptions} objectFit='cover' streamURL={remoteStream && remoteStream.toURL()} style={{ flex: 1 }} />}
             </View>
             }
         </View>
