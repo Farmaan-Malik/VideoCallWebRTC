@@ -12,14 +12,15 @@ const index = () => {
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isDoctor, setIsDoctor] = useState(false)
+    const [role,setRole] = useState('Patient')
     const doctorpng = require('@/assets/images/doctor01.png')
     const patientpng = require('@/assets/images/patient01.png')
     const signIn = async () => {
         try {
             setIsLoading(true)
-            const response = await signInWithEmailAndPassword(auth, email, password)
-            console.log('Response: ', response)
-            router.navigate('/RoomScreen')
+            // const response = await signInWithEmailAndPassword(auth, email, password)
+            // console.log('Response: ', response)
+            router.navigate({pathname:'/RoomScreen',params:{Role:role}})
 
         } catch (e: any) {
             console.log('12')
@@ -37,9 +38,9 @@ const index = () => {
         }]}>
             {isLoading ? <ActivityIndicator /> :
                 <>
-                <Text style={{fontFamily:"Nunito-ExtraBold", fontSize:50,marginBottom:10,color:'white'}}>Health Bridge</Text>
-                    <View style={{ height: 300, width: 300, justifyContent: 'center', alignItems: 'center', borderRadius: '50%', backgroundColor: 'white', marginBottom: 20, shadowColor: 'grey', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 20 }}>
-                        <Image source={isDoctor ? doctorpng : patientpng} style={{ width: 300, height: 300, flex: 1 }} />
+                <Text style={{ fontWeight:'bold',fontSize:30,marginBottom:20,color:'white'}}>Health Bridge</Text>
+                    <View style={{ height: 200, width: 200, justifyContent: 'center', alignItems: 'center', borderRadius: '50%', backgroundColor: 'white', marginBottom: 20, shadowColor: 'grey', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 20 }}>
+                        <Image source={isDoctor ? doctorpng : patientpng} style={{ width: 200, height: 200}} />
                     </View>
                     <Text style={style.textStyle}>Login to your Account</Text>
                     <CustomTextInput containerStyle={style.containerStyle} style={style.input} placeholder='Email' value={email} onChangeText={(value) => { setEmail(prev => value) }} />
@@ -62,6 +63,7 @@ const index = () => {
                     </TouchableOpacity>
                     <TouchableWithoutFeedback onPress={() => {
                         setIsDoctor(prev => !prev)
+                        setRole(!isDoctor ? "Doctor" : "Patient")
                     }} >
                         <Text style={[style.switch]}>
                             Sign in as a {!isDoctor ? 'Doctor' : 'Patient'}
@@ -89,7 +91,7 @@ const style = StyleSheet.create({
         backgroundColor: 'white'
     },
     textStyle: {
-        fontSize: 25,
+        fontSize: 18,
         marginBottom: 10,
         fontFamily:'Nunito-Medium',
         color:'white'

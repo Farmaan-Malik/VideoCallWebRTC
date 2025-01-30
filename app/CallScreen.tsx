@@ -2,7 +2,7 @@
 import "../global.css";
 
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Button, AppState, Platform } from "react-native";
+import { StyleSheet, View, Button, AppState, Platform, FlatList, Alert, Text, KeyboardAvoidingView } from "react-native";
 import { useVideoPlayer, VideoView } from 'expo-video';
 
 import {
@@ -16,7 +16,7 @@ import {
     stopIOSPIP,
     RTCPIPView,
 } from "react-native-webrtc";
-import {db} from "@/firebase";
+import { db } from "@/firebase";
 import {
     addDoc,
     collection,
@@ -27,9 +27,14 @@ import {
     onSnapshot,
     deleteField,
     deleteDoc,
+    Timestamp,
+    query,
+    orderBy,
 } from "firebase/firestore";
 import CallActionBox from "@/app/CallActionBox";
 import { router, useLocalSearchParams } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import CustomTextInput from "@/components/CustomTextInput";
 
 const configuration = {
     iceServers: [
@@ -41,48 +46,64 @@ const configuration = {
 };
 export default function CallScreen({ screens, setScreen }) {
     const ExpoPip = Platform.OS === 'android' ? require('expo-pip') : null;
-    const {roomId} = useLocalSearchParams()
+    const { roomId } = useLocalSearchParams()
     console.log(roomId)
     const [localStream, setLocalStream] = useState();
     const [remoteStream, setRemoteStream] = useState();
     const [cachedLocalPC, setCachedLocalPC] = useState();
-
+    const [isChatVisible, setChatVisible] = useState(false)
     const [isMuted, setIsMuted] = useState(false);
     const [isOffCam, setIsOffCam] = useState(false);
     const [newPipMode, setNewPipMode] = useState(false);
     const [automaticEnterEnabled, setAutomaticEnterEnabled] = useState(false);
     const view = useRef()
     const [appState, setAppState] = useState(AppState.currentState);
+    const [textMessage, setTextMessage] = useState('')
+    const [messages, setMessages] = useState([])
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+        return () => {
+            subscription.remove();
+        };
+    }, []);
 
     useEffect(() => {
-      const subscription = AppState.addEventListener('change', handleAppStateChange);
-  
-      return () => {
-        subscription.remove();
-      };
-    }, []);
-  
+        const docRef = doc(db, 'room', roomId)
+        const messageRef = collection(docRef, 'messages')
+        const q = query(messageRef, orderBy('createdAt', 'asc'))
+        const unsub = onSnapshot(q, (snapshot) => {
+            let allMessages = snapshot.docs.map(doc => {
+                console.log("MessageDoc: ", doc.data())
+                return doc.data()
+            })
+            setMessages(() => [...allMessages])
+            console.log("MessageArray: ", messages)
+
+        })
+        return unsub
+    }, [])
+
     const handleAppStateChange = nextAppState => {
-      if (nextAppState === 'active') {
-        setNewPipMode(false);
-        console.log('App has come to the foreground!');
-      } else if (nextAppState === 'background') {
-        setNewPipMode(true);
-        console.log('App has gone to the background!');
-         if (Platform.OS === 'android') {
-             ExpoPip.enterPipMode({
-                 seamlessResizeEnabled: true,
-                 width: 3,
-                 height:4,
-                 autoEnterEnabled: true,
-             })
-         }else{
-            // startPIP()
-         }
-      }
-      setAppState(nextAppState);
+        if (nextAppState === 'active') {
+            setNewPipMode(false);
+            console.log('App has come to the foreground!');
+        } else if (nextAppState === 'background') {
+            setNewPipMode(true);
+            console.log('App has gone to the background!');
+            if (Platform.OS === 'android') {
+                ExpoPip.enterPipMode({
+                    seamlessResizeEnabled: true,
+                    width: 3,
+                    height: 4,
+                    autoEnterEnabled: true,
+                })
+            } else {
+                // startPIP()
+            }
+        }
+        setAppState(nextAppState);
     };
-  
+
 
     useEffect(() => {
         startLocalStream();
@@ -93,6 +114,25 @@ export default function CallScreen({ screens, setScreen }) {
             startCall(roomId);
         }
     }, [localStream]);
+
+    const handleSendMessage = async () => {
+        if (!textMessage) {
+            return
+        }
+        try {
+            const docRef = doc(db, "room", roomId);
+            const messagesRef = collection(docRef, 'messages')
+            const newDoc = await addDoc(messagesRef, {
+                role: 'Host',
+                text: textMessage,
+                createdAt: Timestamp.fromDate(new Date())
+            })
+            console.log("Message: ", textMessage)
+
+        } catch (err) {
+            Alert.alert("Message:", err)
+        }
+    }
 
     //End call button
     async function endCall() {
@@ -176,14 +216,14 @@ export default function CallScreen({ screens, setScreen }) {
         const offer = await localPC.createOffer();
         await localPC.setLocalDescription(offer);
 
-        await setDoc(roomRef, { offer, connected: false,name:'Farmaan' }, { merge: true });
+        await setDoc(roomRef, { offer, connected: false, name: 'Farmaan' }, { merge: true });
 
         // Listen for remote answer
         onSnapshot(roomRef, (doc) => {
             if (!doc.exists()) {  // <- Ensure the document still exists
                 console.log("Room document deleted. Stopping listener.");
                 return;
-            }        
+            }
             const data = doc.data();
             if (!localPC.currentRemoteDescription && data.answer) {
                 const rtcSessionDescription = new RTCSessionDescription(data.answer);
@@ -210,6 +250,10 @@ export default function CallScreen({ screens, setScreen }) {
         localStream.getVideoTracks().forEach((track) => track._switchCamera());
     };
 
+    const toggleChat = () => {
+        setChatVisible(!isChatVisible)
+    }
+
     // Mutes the local's outgoing audio
     const toggleMute = () => {
         if (!remoteStream) {
@@ -220,7 +264,7 @@ export default function CallScreen({ screens, setScreen }) {
             setIsMuted(!track.enabled);
         });
     };
-    
+
     const toggleCamera = () => {
         localStream.getVideoTracks().forEach((track) => {
             track.enabled = !track.enabled;
@@ -229,73 +273,112 @@ export default function CallScreen({ screens, setScreen }) {
     };
     const startPIP = () => {
         startIOSPIP(view);
-      };
-      const stopPIP = () => {
+    };
+    const stopPIP = () => {
         stopIOSPIP(view);
-      };
-      const stop = () => {
+    };
+    const stop = () => {
         console.log('stop');
         if (stream) {
-          stream.release();
-          setStream(null);
+            stream.release();
+            setStream(null);
         }
-      };
-      let pipOptions = {
+    };
+    let pipOptions = {
         startAutomatically: true,
         fallbackView: (<View style={{ height: 50, width: 50, backgroundColor: 'red' }} />),
         preferredSize: {
-          width: 400,
-          height: 800,
+            width: 400,
+            height: 800,
         }
-      }
+    }
     return (
-            <View className="flex-1">
-                {!newPipMode ? (
-                    <>
-            {!remoteStream && (
-                <RTCView
-                className="flex-1"
-                style={{ height: "100%" }}
-                streamURL={localStream && localStream.toURL()}
-                objectFit={"cover"}
-                />
-            )}
-            
-            {remoteStream && (
+        <View className="flex-1">
+            {!newPipMode ? (
                 <>
-                <RTCView
-                className="flex-1"
-                style={{ height: "100%" }}
-                streamURL={remoteStream && remoteStream.toURL()}
-                objectFit={"cover"}
-                />
-                {!isOffCam && (
-                    <RTCView
-                    style={{width:100,height:150,position:'absolute',top:8,right:10}}
-                    streamURL={localStream && localStream.toURL()}
-                    />
-                )}
+                    {!isChatVisible ?
+                        <>
+                            {!remoteStream && (
+                                <RTCView
+                                    className="flex-1"
+                                    style={{ height: "100%" }}
+                                    streamURL={localStream && localStream.toURL()}
+                                    objectFit={"cover"}
+                                />
+                            )}
+
+                            {remoteStream && (
+                                <>
+                                    <RTCView
+                                        className="flex-1"
+                                        style={{ height: "100%" }}
+                                        streamURL={remoteStream && remoteStream.toURL()}
+                                        objectFit={"cover"}
+                                    />
+                                    {!isOffCam && (
+                                        <RTCView
+                                            style={{ width: 100, height: 150, position: 'absolute', top: 8, right: 10 }}
+                                            streamURL={localStream && localStream.toURL()}
+                                        />
+                                    )}
+                                </>
+                            )}
+                            <View style={{ position: 'absolute', bottom: 0, width: '100%', zIndex: 3 }}>
+                                <CallActionBox
+                                    switchCamera={switchCamera}
+                                    toggleMute={toggleMute}
+                                    toggleCamera={toggleCamera}
+                                    endCall={endCall}
+                                    toggleChat={toggleChat}
+                                />
+                            </View>
+                        </> : 
+                        <KeyboardAvoidingView behavior='padding' style={{ backgroundColor: 'white', flex: 1 }}>
+                            <Ionicons onPress={() => toggleChat()} name='close' size={25} style={{ width: '10%', alignItems: 'center', justifyContent: 'center', padding: 5 }} />
+                            <View style={{ flex: 1, backgroundColor: 'white' }}>
+                                <FlatList data={messages} 
+                                renderItem={({ item }) => (<View style={{borderRadius:10,backgroundColor:item.role != 'Host' ? '#9ACBD0' : '#CAE0BC',borderWidth:StyleSheet.hairlineWidth,minWidth:150, maxWidth:200,alignSelf:(item.role != 'Host') ? 'flex-start' : 'flex-end',marginVertical:10,marginHorizontal:5 }}>
+                                    <Text style={{ fontSize: 14, color: 'black', fontFamily: 'Nunito-semiBold',padding:10}}>
+                                        {item.text}
+                                    </Text>
+                                    </View>
+                                )} style={{ flex: 1 }} contentContainerStyle={{justifyContent: 'center' }} />
+                            </View>
+                            <CustomTextInput
+                                containerStyle={{
+                                    borderWidth: StyleSheet.hairlineWidth,
+                                    // position: 'absolute',
+                                    // bottom: '0',
+                                    backgroundColor: 'white'
+                                }}
+                                style={{
+                                    width: '90%',
+                                    paddingStart: 10,
+                                    // borderWidth: 1 ,
+                                    height: '100%'
+                                }}
+                                icon={true}
+                                iconName="send-outline"
+                                iconSize={25}
+                                onIconClick={() => {
+                                    handleSendMessage().then(() => setTextMessage(''))
+
+                                }}
+                                value={textMessage}
+                                onChangeText={(value) => { setTextMessage(value) }}
+                                placeholder="Type a message.." />
+                        </KeyboardAvoidingView>}
                 </>
-            )}
-            <View style={{position:'absolute', bottom:0, width:'100%',zIndex:3}}>
-            <CallActionBox
-            switchCamera={switchCamera}
-            toggleMute={toggleMute}
-            toggleCamera={toggleCamera}
-            endCall={endCall}
-            />
+            ) : <View style={{ flex: 1 }}>
+                {Platform.OS === 'android' ?
+                    <RTCView objectFit='cover' streamURL={localStream && localStream.toURL()} style={{ flex: 1 }} />
+                    : <RTCPIPView ref={view} iosPIP={pipOptions} objectFit='cover' streamURL={localStream && localStream.toURL()} style={{ flex: 1 }} />}
             </View>
-            </>
-        ) : <View style={{flex:1}}>
-            {Platform.OS === 'android' ? 
-                <RTCView objectFit='cover' streamURL={localStream && localStream.toURL()} style={{flex:1}} />
-             : <RTCPIPView ref={view} iosPIP={pipOptions} objectFit='cover' streamURL={localStream && localStream.toURL()} style={{flex:1}}/> }
+            }
         </View>
-        }
-            </View>
-        )
-        
-      
+    )
+
+
 }
 
 const styles = StyleSheet.create({
@@ -305,5 +388,5 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0
-      }
+    }
 })

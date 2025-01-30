@@ -1,7 +1,7 @@
 // @ts-nocheck
 
 import React, { useState, useEffect } from "react";
-import { Text, StyleSheet, Button, View } from "react-native";
+import { Text, StyleSheet, Button, View, FlatList } from "react-native";
 import "../global.css";
 import {
     RTCPeerConnection,
@@ -20,10 +20,16 @@ import {
     updateDoc,
     onSnapshot,
     deleteField,
+    query,
+    orderBy,
+    Timestamp,
 } from "firebase/firestore";
 import {db} from "@/firebase";
 import CallActionBox from "./CallActionBox";
 import { router, useLocalSearchParams } from "expo-router";
+import { KeyboardAvoidingView } from "react-native";
+import CustomTextInput from "@/components/CustomTextInput";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 const configuration = {
     iceServers: [
@@ -41,11 +47,47 @@ export default function JoinScreen() {
     const {roomId} = useLocalSearchParams()
     const [isMuted, setIsMuted] = useState(false);
     const [isOffCam, setIsOffCam] = useState(false);
-
+    const [messages,setMessages] = useState([])
+    const [textMessage,setTextMessage] = useState('')
+    const [isChatVisible,setChatVisible] = useState(false)
+     const handleSendMessage = async () => {
+            if (!textMessage) {
+                return
+            }
+            try {
+                console.log(roomId)
+                const docRef = doc(db, "room", roomId);
+                const messagesRef = collection(docRef, 'messages')
+                const newDoc = await addDoc(messagesRef, {
+                    role: 'Patient',
+                    text: textMessage,
+                    createdAt: Timestamp.fromDate(new Date()) 
+                })
+                console.log("Message: ", textMessage)
+    
+            } catch (err) {
+                Alert.alert("Message:", err)
+            }
+        }
+    
     //Automatically start stream
     useEffect(() => {
         startLocalStream();
     }, []);
+    useEffect(() => {
+            const docRef = doc(db, 'room', roomId)
+            const messageRef = collection(docRef, 'messages')
+            const q = query(messageRef, orderBy('createdAt', 'asc'))
+            const unsub = onSnapshot(q, (snapshot) => {
+                let allMessages = snapshot.docs.map(doc => {
+                    console.log("MessageDoc: ", doc.data())
+                    return doc.data()
+                })
+                setMessages(() => [...allMessages])
+                console.log("MessageArray: ", messages)
+            })
+            return unsub
+        }, [])
     useEffect(() => {
         if (localStream) {
             joinCall(roomId);
@@ -143,7 +185,7 @@ router.back
 
         await updateDoc(roomRef, { answer, connected: true }, { merge: true });
 
-        onSnapshot(callerCandidatesCollection, (snapshot) => {
+        const unsub = onSnapshot(callerCandidatesCollection, (snapshot) => {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === "added") {
                     let data = change.doc.data();
@@ -152,9 +194,11 @@ router.back
             });
         });
 
-        onSnapshot(roomRef, (doc) => {
+        const unsub2 = onSnapshot(roomRef, (doc) => {
             const data = doc.data();
-            if (!data.answer) {
+            if (!data) {
+                unsub
+                unsub2
                 router.navigate('/RoomScreen')
                 // setScreen(screens.ROOM);
             }
@@ -177,6 +221,10 @@ router.back
             setIsMuted(!track.enabled);
         });
     };
+    const toggleChat = () => {
+        setChatVisible((prev)=>!prev)
+    }
+
 
     const toggleCamera = () => {
         localStream.getVideoTracks().forEach((track) => {
@@ -187,30 +235,73 @@ router.back
 
     // @ts-ignore
     return (
-        <View className="flex-1">
-            <RTCView
-                style={{height:'100%'}}
-                className="flex-1"
-                streamURL={remoteStream && remoteStream.toURL()}
-                objectFit={"cover"}
-            />
 
+        
+        <View className="flex-1">
+            {isChatVisible ? (
+                <KeyboardAvoidingView behavior='padding' style={{ backgroundColor: 'white', flex: 1 }}>
+                <Ionicons onPress={() => toggleChat()} name='close' size={25} style={{ width: '10%', alignItems: 'center', justifyContent: 'center', padding: 5 }} />
+                <View style={{ flex: 1, backgroundColor: 'white' }}>
+                    <FlatList data={messages} 
+                    renderItem={({ item }) => (<View style={{borderRadius:10,backgroundColor:item.role == 'Host' ? '#9ACBD0' : '#CAE0BC',borderWidth:StyleSheet.hairlineWidth,minWidth:150, maxWidth:200,alignSelf:(item.role == 'Host') ? 'flex-start' : 'flex-end',marginVertical:10,marginHorizontal:5 }}>
+                        <Text style={{ fontSize: 14, color: 'black', fontFamily: 'Nunito-semiBold',padding:10}}>
+                            {item.text}
+                        </Text>
+                        </View>
+                    )} style={{ flex: 1 }} contentContainerStyle={{justifyContent: 'center'}} />
+                </View>
+                <CustomTextInput
+                    containerStyle={{
+                        borderWidth: StyleSheet.hairlineWidth,
+                        // position: 'absolute',
+                        // bottom: '0',
+                        backgroundColor: 'white'
+                    }}
+                    style={{
+                        width: '90%',
+                        paddingStart: 10,
+                        // borderWidth: 1 ,
+                        height: '100%'
+                    }}
+                    icon={true}
+                    iconName="send-outline"
+                    iconSize={25}
+                    onIconClick={() => {
+                        handleSendMessage().then(() => setTextMessage(''))
+
+                    }}
+                    value={textMessage}
+                    onChangeText={(value) => { setTextMessage(value) }}
+                    placeholder="Type a message.." />
+            </KeyboardAvoidingView>
+            ) : (
+                <>
+            <RTCView
+            style={{height:'100%'}}
+            className="flex-1"
+            streamURL={remoteStream && remoteStream.toURL()}
+            objectFit={"cover"}
+            />
+            
             {remoteStream && !isOffCam && (
                 <RTCView
-                    style={{width:100,height:150,position:'absolute',top:8,right:10}}
-                    className="w-32 h-48 absolute right-6 top-8"
-                    streamURL={localStream && localStream.toURL()}
-                    objectFit={"cover"}
+                style={{width:100,height:150,position:'absolute',top:8,right:10}}
+                className="w-32 h-48 absolute right-6 top-8"
+                streamURL={localStream && localStream.toURL()}
+                objectFit={"cover"}
                 />
             )}
             <View style={{position:'absolute', bottom:0, width:'100%',zIndex:3}}>
-                <CallActionBox
-                    switchCamera={switchCamera}
-                    toggleMute={toggleMute}
-                    toggleCamera={toggleCamera}
-                    endCall={endCall}
-                />
+            <CallActionBox
+            switchCamera={switchCamera}
+            toggleMute={toggleMute}
+            toggleCamera={toggleCamera}
+            endCall={endCall}
+            toggleChat={toggleChat}
+            />
             </View>
-        </View>
-    );
-}
+            </>
+        )}
+            </View>
+        );
+    }

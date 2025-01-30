@@ -20,6 +20,7 @@ import { SafeAreaView } from "react-native";
 import MeetingCard from "@/components/MeetingCard";
 import { globalStyle } from "@/assets/styles/globalStyle";
 import { LinearGradient } from "expo-linear-gradient";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 export default function RoomScreen({
 }) {
@@ -27,7 +28,8 @@ export default function RoomScreen({
     const [roomId, setRoomId] = useState("");
     const [roomList, setRoomList] = useState([{ "hostName": "Farmaan", "roomId": "lkiwssu2212" }])
     const [isRefreshing, setIsRefreshing] = useState(false)
-    const [isDoctor, setIsDoctor] = useState(true)
+    const {Role} = useLocalSearchParams()
+    const isDoctor = Role == "Doctor"
 
     const fetchAllData = async () => {
         try {
@@ -37,9 +39,10 @@ export default function RoomScreen({
             const arr = [];
 
             snapshot.forEach((doc) => {
-                arr.push({ roomId: doc.id, hostName: doc.data().name || "Unknown" });
+                console
+                arr.push({ roomId: doc.id, hostName: doc.data().name || "Dr. Joe" });
             });
-            setRoomList((prev) => [...prev, ...arr]);
+            setRoomList((prev) => [...arr]);
             console.log(arr)
             console.log("Length:", roomList.length)
         } catch (error) {
@@ -56,20 +59,15 @@ export default function RoomScreen({
 
 
     //generate random room id
-    useEffect(() => {
-        if (isDoctor) {
-            const generateRandomId = () => {
-                const characters = "abcdefghijklmnopqrstuvwxyz";
-                let result = "";
-                for (let i = 0; i < 7; i++) {
-                    const randomIndex = Math.floor(Math.random() * characters.length);
-                    result += characters.charAt(randomIndex);
-                }
-                return setRoomId(result);
-            };
-            generateRandomId();
+    const generateRandomId = () => {
+        const characters = "abcdefghijklmnopqrstuvwxyz";
+        let result = "";
+        for (let i = 0; i < 7; i++) {
+            const randomIndex = Math.floor(Math.random() * characters.length);
+            result += characters.charAt(randomIndex);
         }
-    }, []);
+        return result;
+    };
 
     //checks if room is existing
     const checkMeeting = async (id) => {
@@ -97,7 +95,13 @@ export default function RoomScreen({
             <LinearGradient style={[globalStyle.container, { flex: 1 }]} colors={['white', 'tomato']}>
                 {!isDoctor ? <>
                     {roomList.length > 0 ?
-                        (<FlatList numColumns={2} data={roomList} style={{ width: '100%' }} contentContainerStyle={{}} renderItem={({ item }) => <MeetingCard name={item.hostName} id={item.roomId} onClick={() => checkMeeting(item.roomId)} />} />)
+                        (<>
+                        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',width:'100%',paddingHorizontal:10}}>
+                        <Text style={{fontSize:20,fontFamily:'Nunito-Bold',paddingVertical:10}}>Available Doctors</Text>
+                        <Ionicons onPress={()=>fetchAllData()} color={'#D84040'} name='refresh-circle' size={25} style={{alignSelf:'flex-end',padding:10}}/>
+                        </View>
+                        <FlatList numColumns={2} data={roomList} style={{ width: '100%' }} contentContainerStyle={{}} renderItem={({ item }) => <MeetingCard name={item.hostName} id={item.roomId} onClick={() => checkMeeting(item.roomId)} />} />
+                        </>)
                         : (<View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center' }]}>
                             <Text>No rooms currently active</Text>
                         </View>)}
@@ -106,39 +110,12 @@ export default function RoomScreen({
                     : <View style={{ flex: 1,width: '100%', alignItems: 'center', justifyContent: 'center' }}>
                         {/* <Text style={{fontSize:20,fontWeight:'bold'}}>Create Room</Text> */}
                         <TouchableOpacity style={{ backgroundColor: 'tomato', borderRadius: 10 }} onPress={() => {
-                        router.navigate({pathname:`/CallScreen`, params: {roomId:roomId}});
+                        const result = generateRandomId()
+                        router.navigate({pathname:`/CallScreen`, params: {roomId:result}});
 
                         }}>
                             <Text style={{ fontFamily: 'Nunito-Bold', fontSize: 20, padding: 10, color: 'white' }}>Start Meeting</Text>
                         </TouchableOpacity>
-
-                        {/* <Text className="text-2xl font-bold text-center">Enter Room ID:</Text>
-            <TextInput
-            className="bg-white border-sky-600 border-2 mx-5 my-3 p-2 rounded-md"
-            value={roomId}
-            onChangeText={setRoomId}
-            />
-            <View className="gap-y-3 mx-5 mt-2">
-                <TouchableOpacity
-                    className="bg-sky-300 p-2  rounded-md"
-                    onPress={() => {
-                        
-                        router.navigate({pathname:`/CallScreen`, params: {roomId:roomId}});
-                    }}
-                    >
-                    <Text className="color-black text-center text-xl font-bold ">
-                        Start meeting
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    className="bg-sky-300 p-2 rounded-md"
-                    onPress={() => checkMeeting(roomId)}
-                    >
-                    <Text className="color-black text-center text-xl font-bold ">
-                        Join meeting
-                    </Text>
-                </TouchableOpacity>
-                </View> */}
                     </View>
                 }
             </LinearGradient>

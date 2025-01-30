@@ -17,6 +17,7 @@ interface Props extends TextInputProps {
     style?:StyleProp<TextStyle>,
     containerStyle?:StyleProp<ViewStyle>,
     icon?:boolean,
+    iconSize?:number,
     iconName?:keyof typeof Ionicons.glyphMap,
     onIconClick?:() => void,
 }
@@ -61,7 +62,7 @@ const CustomTextInput= forwardRef<TextInput, Props>((props, ref) => {
                 }}
             />
             {props.icon &&
-            <Ionicons size={15} onPress={props.onIconClick} style={{marginRight:10}} name={props.iconName}/>}
+            <Ionicons size={props.iconSize ? props.iconSize : 15} onPress={props.onIconClick} style={{marginRight:10}} name={props.iconName}/>}
         </View>
     );
 });
