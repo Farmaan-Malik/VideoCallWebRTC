@@ -242,7 +242,7 @@ router.back
         <View className="flex-1">
             {isChatVisible ? (
                <KeyboardAvoidingView behavior='padding' style={{ backgroundColor: 'white', flex: 1 }}>
-                <SafeAreaView edges={['top']} style={{flex:1,backgroundColor:'red'}}>
+                <SafeAreaView edges={['top']} style={{flex:1,backgroundColor:'red',paddingTop:10}}>
                <Ionicons color={'grey'} onPress={() => toggleChat()} name='chevron-back-circle' size={30} style={{ width: '10%', alignItems: 'center', justifyContent: 'center', padding: 5,marginTop:8,marginBottom:8 }} />
                <View style={{ flex: 1, backgroundColor: 'white' }}>
                    <FlatList data={messages} 
