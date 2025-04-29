@@ -38,7 +38,7 @@ const index = () => {
         }]}>
             {isLoading ? <ActivityIndicator /> :
                 <>
-                <Text style={{ fontWeight:'bold',fontSize:30,marginBottom:20,color:'white'}}>Health Bridge</Text>
+                <Text style={{ fontWeight:'bold',fontSize:30,marginBottom:20,color:'white'}}>MediCall</Text>
                     <View style={{ height: 200, width: 200, justifyContent: 'center', alignItems: 'center', borderRadius: '50%', backgroundColor: 'white', marginBottom: 20, shadowColor: 'grey', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 20 }}>
                         <Image source={isDoctor ? doctorpng : patientpng} style={{ width: 200, height: 200}} />
                     </View>
